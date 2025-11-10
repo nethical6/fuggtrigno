@@ -154,19 +154,21 @@
             </div>
 
             <!-- Controls -->
-            <div id="controls-view">
-                <button id="flip-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl transition-all">
-                    Flip Card
-                </button>
-            </div>
-            
-            <div id="assessment-view" class="hidden grid grid-cols-2 gap-4">
-                 <button id="hard-btn" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 px-4 rounded-xl transition-all">
-                    Didn't Know
-                </button>
-                 <button id="easy-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl transition-all">
-                    Knew It!
-                </button>
+            <div id="controls-container" class="grid grid-cols-1 gap-4">
+                <div id="controls-view">
+                    <button id="flip-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl transition-all">
+                        Flip Card
+                    </button>
+                </div>
+                
+                <div id="assessment-view" class="hidden grid grid-cols-2 gap-4">
+                     <button id="hard-btn" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 px-4 rounded-xl transition-all">
+                        Didn't Know
+                    </button>
+                     <button id="easy-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl transition-all">
+                        Knew It!
+                    </button>
+                </div>
             </div>
             
             <div class="text-center text-slate-400 text-sm mt-4">
@@ -571,9 +573,13 @@
          * Flips the card and shows assessment buttons
          */
         function flipCard() {
-            card.classList.add('is-flipped');
-            controlsView.classList.add('hidden');
-            assessmentView.classList.remove('hidden');
+            card.classList.toggle('is-flipped');
+            
+            if (card.classList.contains('is-flipped')) {
+                assessmentView.classList.remove('hidden');
+            } else {
+                assessmentView.classList.add('hidden');
+            }
         }
 
         /**
@@ -634,17 +640,14 @@
                 
                 // Reset mastery with smart decay
                 if (progress.box > 1) {
-                    // Drop by one box instead of resetting to 1 if you've been doing well
-                    if (progress.consecutiveCorrect >= 3) {
-                        progress.box--;
-                        showXpToast(`Moved to Box ${progress.box}`, 'bad', hint);
-                    } else {
-                        progress.box = 1;
-                        showXpToast(`Reset to Box 1`, 'bad', hint);
-                    }
+                    progress.box = 1;
+                    showXpToast(`Reset to Box 1`, 'bad', hint);
                 } else {
                     showXpToast(`Keep practicing!`, 'bad', hint);
                 }
+                
+                // Add card to the end of the deck to practice again
+                currentDeck.push(currentDeck[currentCardIndex]);
             }
             
             showXpToast(`+${xpGained} XP`);
@@ -652,6 +655,8 @@
             saveGameData();
             
             currentCardIndex++;
+            // Update progress text since deck length might have changed
+            progressText.textContent = `Card ${currentCardIndex + 1} of ${currentDeck.length}`;
             showCard();
         }
         
