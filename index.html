@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trig Formula Quizzer</title>
+    <!-- Import Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Import KaTeX for math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" xintegrity="sha384-KiWOvVjnN8qwKMdinVERCcqSBCtx3GNPmLSJ6tGniG3LqkaGgrSrqbOexSaG/z-T" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" xintegrity="sha384-hIoBPJpTadxgnHMYsCoA0zrfEAgQXXtxjCFMPOi7uU/S9X/rDnnCebLwSY/hOoxD" crossorigin="anonymous"></script>
+    
+    <!-- Import Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-y: scroll;
+        }
+
+        /* --- Flashcard Flip Animation --- */
+        .card { perspective: 1000px; }
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .card.is-flipped .card-inner { transform: rotateY(180deg); }
+        .card-front,
+        .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1.5rem;
+        }
+        .card-back { transform: rotateY(180deg); }
+        
+        /* --- KaTeX Font Size --- */
+        .katex {
+            font-size: 1.5rem !important;
+            text-align: center;
+        }
+        @media (min-width: 640px) {
+            .katex { font-size: 1.75rem !important; }
+        }
+
+        /* --- XP Bar --- */
+        .xp-bar-bg {
+            background-color: #3f3f46; /* zinc-700 */
+        }
+        .xp-bar-inner {
+            background-color: #a78bfa; /* violet-400 */
+            transition: width 0.5s ease-out;
+        }
+        
+        /* --- XP Toast Animation --- */
+        @keyframes fade-up-out {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-30px); }
+        }
+        .xp-toast {
+            animation: fade-up-out 1s ease-out forwards;
+        }
+        
+        /* --- Streak Bounce --- */
+        @keyframes bounce-in {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        .streak-bounce {
+            animation: bounce-in 0.3s ease-out;
+        }
+
+        /* --- Progress Bars --- */
+        .progress-bar-bg {
+            background-color: #3f3f46; /* zinc-700 */
+        }
+        .progress-bar-inner {
+            transition: width 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex items-center justify-start min-h-screen p-4 pt-8">
+
+    <!-- XP Toast Container -->
+    <div id="xp-toast-container" class="fixed top-4 right-4 z-50 pointer-events-none">
+        <!-- XP toasts will be injected here -->
+    </div>
+    
+    <!-- Main Container -->
+    <div class="bg-slate-800 rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-lg border border-slate-700/50 mx-auto">
+
+        <!-- Header: Level & XP -->
+        <div id="header-stats" class="mb-6">
+            <div class="flex justify-between items-center mb-2">
+                <span id="level-text" class="font-bold text-lg text-violet-400">Level 1</span>
+                <span id="xp-text" class="text-sm text-slate-400">0 / 150 XP</span>
+            </div>
+            <div class="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+                <div id="xp-bar-inner" class="xp-bar-inner h-full rounded-full" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <!-- View 1: Category Selector -->
+        <div id="category-view">
+            <h1 class="text-3xl font-bold text-center mb-6">Trig Formula Quizzer</h1>
+            <div id="category-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Categories will be injected by JS -->
+            </div>
+            <button id="challenge-mode-btn" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-xl transition-all mt-4">
+                Challenge Mode (Review All)
+            </button>
+            <button id="view-progress-btn" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-4 rounded-xl transition-all mt-4">
+                View My Progress
+            </button>
+        </div>
+
+        <!-- View 2: Quiz View -->
+        <div id="quiz-view" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <button id="back-to-categories-btn" class="text-slate-400 hover:text-slate-100 transition-all rounded-lg py-1 px-2 -ml-2">&larr; Back</button>
+                
+                <!-- Streak Counter -->
+                <div id="streak-counter" class="hidden items-center text-lg font-bold text-orange-400">
+                    <i class="ph ph-fire text-2xl mr-1"></i>
+                    <span id="streak-text">0</span>
+                </div>
+                
+                <div id="progress-text" class="text-lg font-semibold text-slate-300"></div>
+            </div>
+
+            <!-- Flashcard -->
+            <div id="flashcard" class="card w-full h-56 sm:h-64 mb-4">
+                <div id="card-inner" class="card-inner">
+                    <div id="card-front" class="card-front bg-slate-700 rounded-xl shadow-lg border border-slate-600"></div>
+                    <div id="card-back" class="card-back bg-indigo-700 rounded-xl shadow-lg"></div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div id="controls-view">
+                <button id="flip-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl transition-all">
+                    Flip Card
+                </button>
+            </div>
+            
+            <div id="assessment-view" class="hidden grid grid-cols-2 gap-4">
+                 <button id="hard-btn" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 px-4 rounded-xl transition-all">
+                    Didn't Know
+                </button>
+                 <button id="easy-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl transition-all">
+                    Knew It!
+                </button>
+            </div>
+            
+            <div class="text-center text-slate-400 text-sm mt-4">
+                "Didn't Know" resets card mastery to Box 1.
+            </div>
+        </div>
+        
+        <!-- View 3: Session Complete -->
+        <div id="complete-view" class="hidden text-center">
+            <h2 class="text-3xl font-bold text-emerald-400 mb-4">Deck Complete!</h2>
+            <p id="complete-message" class="text-xl text-slate-300 mb-6">Great work. You've reviewed all non-mastered cards in this deck.</p>
+            <div class="space-y-4">
+                <button id="restart-deck-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl transition-all">
+                    Study This Deck Again
+                </button>
+                <button id="go-home-btn" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-4 rounded-xl transition-all">
+                    Back to All Topics
+                </button>
+            </div>
+        </div>
+        
+        <!-- View 4: Progress View -->
+        <div id="progress-view" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                 <h2 class="text-3xl font-bold text-center">My Progress</h2>
+                 <button id="back-from-progress-btn" class="text-slate-400 hover:text-slate-100 transition-all rounded-lg py-1 px-2">&larr; Back</button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <h3 class="text-lg font-semibold mb-1 text-slate-300">Total Cards Mastered</h3>
+                    <div class="flex items-center space-x-2">
+                        <div id="total-mastery-bar" class="w-full h-6 bg-slate-700 rounded-lg overflow-hidden">
+                            <div class="progress-bar-inner h-full rounded-lg bg-emerald-500" style="width: 0%;"></div>
+                        </div>
+                        <span id="total-mastery-text" class="font-bold text-lg text-emerald-400">0/0</span>
+                    </div>
+                </div>
+                
+                <div class="border-t border-slate-700 pt-4">
+                    <h3 class="text-lg font-semibold mb-2 text-slate-300">Mastery Levels</h3>
+                    <p class="text-sm text-slate-400 mb-3">Cards in Box 5 are "Mastered".</p>
+                    <div id="mastery-bars-container" class="space-y-3">
+                        <!-- Progress bars for each box will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- FORMULA DATA (Same as before) ---
+        const formulaData = [
+            {
+                category: "Basic Ratios",
+                cards: [
+                    { front: "\\sin(\\theta) = ?", back: "\\frac{1}{\\csc(\\theta)}" },
+                    { front: "\\cos(\\theta) = ?", back: "\\frac{1}{\\sec(\\theta)}" },
+                    { front: "\\tan(\\theta) = ?", back: "\\frac{1}{\\cot(\\theta)}" },
+                    { front: "\\csc(\\theta) = ?", back: "\\frac{1}{\\sin(\\theta)}" },
+                    { front: "\\sec(\\theta) = ?", back: "\\frac{1}{\\cos(\\theta)}" },
+                    { front: "\\cot(\\theta) = ?", back: "\\frac{1}{\\tan(\\theta)}" },
+                    { front: "\\tan(\\theta) = ?", back: "\\frac{\\sin(\\theta)}{\\cos(\\theta)}" },
+                    { front: "\\cot(\\theta) = ?", back: "\\frac{\\cos(\\theta)}{\\sin(\\theta)}" }
+                ]
+            },
+            {
+                category: "Pythagorean Identities",
+                cards: [
+                    { front: "\\sin^2(\\theta) + \\cos^2(\\theta) = ?", back: "1" },
+                    { front: "1 + \\tan^2(\\theta) = ?", back: "\\sec^2(\\theta)" },
+                    { front: "1 + \\cot^2(\\theta) = ?", back: "\\csc^2(\\theta)" }
+                ]
+            },
+            {
+                category: "Degree to Radian",
+                cards: [
+                    { front: "30° = ?", back: "\\frac{\\pi}{6}" },
+                    { front: "45° = ?", back: "\\frac{\\pi}{4}" },
+                    { front: "60° = ?", back: "\\frac{\\pi}{3}" },
+                    { front: "90° = ?", back: "\\frac{\\pi}{2}" },
+                    { front: "180° = ?", back: "\\pi" },
+                    { front: "270° = ?", back: "\\frac{3\\pi}{2}" },
+                    { front: "360° = ?", back: "2\\pi" }
+                ]
+            },
+            {
+                category: "Angle Values (sin/cos)",
+                cards: [
+                    { front: "\\sin(0°)", back: "0" },
+                    { front: "\\cos(0°)", back: "1" },
+                    { front: "\\sin(30°)", back: "\\frac{1}{2}" },
+                    { front: "\\cos(30°)", back: "\\frac{\\sqrt{3}}{2}" },
+                    { front: "\\sin(45°)", back: "\\frac{1}{\\sqrt{2}} \\text{ or } \\frac{\\sqrt{2}}{2}" },
+                    { front: "\\cos(45°)", back: "\\frac{1}{\\sqrt{2}} \\text{ or } \\frac{\\sqrt{2}}{2}" },
+                    { front: "\\sin(60°)", back: "\\frac{\\sqrt{3}}{2}" },
+                    { front: "\\cos(60°)", back: "\\frac{1}{2}" },
+                    { front: "\\sin(90°)", back: "1" },
+                    { front: "\\cos(90°)", back: "0" }
+                ]
+            },
+            {
+                category: "Angle Values (tan/cot)",
+                cards: [
+                    { front: "\\tan(0°)", back: "0" },
+                    { front: "\\cot(0°)", back: "\\infty \\text{ (Undefined)}" },
+                    { front: "\\tan(30°)", back: "\\frac{1}{\\sqrt{3}}" },
+                    { front: "\\cot(30°)", back: "\\sqrt{3}" },
+                    { front: "\\tan(45°)", back: "1" },
+                    { front: "\\cot(45°)", back: "1" },
+                    { front: "\\tan(60°)", back: "\\sqrt{3}" },
+                    { front: "\\cot(60°)", back: "\\frac{1}{\\sqrt{3}}" },
+                    { front: "\\tan(90°)", back: "\\infty \\text{ (Undefined)}" },
+                    { front: "\\cot(90°)", back: "0" }
+                ]
+            },
+            {
+                category: "Angle Values (sec/csc)",
+                cards: [
+                    { front: "\\sec(0°)", back: "1" },
+                    { front: "\\csc(0°)", back: "\\infty \\text{ (Undefined)}" },
+                    { front: "\\sec(30°)", back: "\\frac{2}{\\sqrt{3}}" },
+                    { front: "\\csc(30°)", back: "2" },
+                    { front: "\\sec(45°)", back: "\\sqrt{2}" },
+                    { front: "\\csc(45°)", back: "\\sqrt{2}" },
+                    { front: "\\sec(60°)", back: "2" },
+                    { front: "\\csc(60°)", back: "\\frac{2}{\\sqrt{3}}" },
+                    { front: "\\sec(90°)", back: "\\infty \\text{ (Undefined)}" },
+                    { front: "\\csc(90°)", back: "1" }
+                ]
+            },
+            {
+                category: "Inverse Identities (Reciprocal)",
+                cards: [
+                    { front: "\\sin^{-1}(\\frac{1}{x}) = ?", back: "\\csc^{-1}(x)" },
+                    { front: "\\tan^{-1}(\\frac{1}{x}) = ?", back: "\\cot^{-1}(x)" },
+                    { front: "\\cos^{-1}(\\frac{1}{x}) = ?", back: "\\sec^{-1}(x)" }
+                ]
+            },
+            {
+                category: "Inverse Identities (Negative)",
+                cards: [
+                    { front: "\\sin^{-1}(-x) = ?", back: "-\\sin^{-1}(x)" },
+                    { front: "\\tan^{-1}(-x) = ?", back: "-\\tan^{-1}(x)" },
+                    { front: "\\csc^{-1}(-x) = ?", back: "-\\csc^{-1}(x)" },
+                    { front: "\\cos^{-1}(-x) = ?", back: "\\pi - \\cos^{-1}(x)" },
+                    { front: "\\sec^{-1}(-x) = ?", back: "\\pi - \\sec^{-1}(x)" },
+                    { front: "\\cot^{-1}(-x) = ?", back: "\\pi - \\cot^{-1}(x)" }
+                ]
+            },
+            {
+                category: "Domain & Range (Trig)",
+                cards: [
+                    { front: "Domain: \\sin(x)", back: "All real numbers (\\mathbb{R})" },
+                    { front: "Range: \\sin(x)", back: "[-1, 1]" },
+                    { front: "Domain: \\cos(x)", back: "All real numbers (\\mathbb{R})" },
+                    { front: "Range: \\cos(x)", back: "[-1, 1]" },
+                    { front: "Domain: \\tan(x)", back: "\\mathbb{R} \\text{ except } (2n+1)\\frac{\\pi}{2}" },
+                    { front: "Range: \\tan(x)", back: "All real numbers (\\mathbb{R})" },
+                    { front: "Domain: \\sec(x)", back: "\\mathbb{R} \\text{ except } (2n+1)\\frac{\\pi}{2}" },
+                    { front: "Range: \\sec(x)", back: "(-\\infty, -1] \\cup [1, \\infty)" },
+                    { front: "Domain: \\cot(x)", back: "\\mathbb{R} \\text{ except } n\\pi" },
+                    { front: "Range: \\cot(x)", back: "All real numbers (\\mathbb{R})" },
+                    { front: "Domain: \\csc(x)", back: "\\mathbb{R} \\text{ except } n\\pi" },
+                    { front: "Range: \\csc(x)", back: "(-\\infty, -1] \\cup [1, \\infty)" }
+                ]
+            },
+            {
+                category: "Domain & Range (Inverse)",
+                cards: [
+                    { front: "Domain: \\sin^{-1}(x)", back: "[-1, 1]" },
+                    { front: "Range: \\sin^{-1}(x)", back: "[-\\frac{\\pi}{2}, \\frac{\\pi}{2}]" },
+                    { front: "Domain: \\cos^{-1}(x)", back: "[-1, 1]" },
+                    { front: "Range: \\cos^{-1}(x)", back: "[0, \\pi]" },
+                    { front: "Domain: \\tan^{-1}(x)", back: "All real numbers (\\mathbb{R})" },
+                    { front: "Range: \\tan^{-1}(x)", back: "(-\\frac{\\pi}{2}, \\frac{\\pi}{2})" },
+                    { front: "Domain: \\cot^{-1}(x)", back: "All real numbers (\\mathbb{R})" },
+                    { front: "Range: \\cot^{-1}(x)", back: "(0, \\pi)" },
+                    { front: "Domain: \\sec^{-1}(x)", back: "(-\\infty, -1] \\cup [1, \\infty)" },
+                    { front: "Range: \\sec^{-1}(x)", back: "[0, \\pi] - \\{\\frac{\\pi}{2}\\}" },
+                    { front: "Domain: \\csc^{-1}(x)", back: "(-\\infty, -1] \\cup [1, \\infty)" },
+                    { front: "Range: \\csc^{-1}(x)", back: "[-\\frac{\\pi}{2}, \\frac{\\pi}{2}] - \\{0\\}" }
+                ]
+            },
+            {
+                category: "Addition/Subtraction",
+                cards: [
+                    { front: "\\sin(A + B) = ?", back: "\\sin A \\cos B + \\cos A \\sin B" },
+                    { front: "\\sin(A - B) = ?", back: "\\sin A \\cos B - \\cos A \\sin B" },
+                    { front: "\\cos(A + B) = ?", back: "\\cos A \\cos B - \\sin A \\sin B" },
+                    { front: "\\cos(A - B) = ?", back: "\\cos A \\cos B + \\sin A \\sin B" },
+                    { front: "\\tan(A + B) = ?", back: "\\frac{\\tan A + \\tan B}{1 - \\tan A \\tan B}" },
+                    { front: "\\tan(A - B) = ?", back: "\\frac{\\tan A - \\tan B}{1 + \\tan A \\tan B}" },
+                    { front: "\\cot(A + B) = ?", back: "\\frac{\\cot A \\cot B - 1}{\\cot B + \\cot A}" },
+                    { front: "\\cot(A - B) = ?", back: "\\frac{\\cot A \\cot B + 1}{\\cot B - \\cot A}" },
+                    { front: "\\sin(A+B)\\sin(A-B) = ?", back: "\\sin^2 A - \\sin^2 B \\newline \\text{or } \\cos^2 B - \\cos^2 A" },
+                    { front: "\\cos(A+B)\\cos(A-B) = ?", back: "\\cos^2 A - \\sin^2 B \\newline \\text{or } \\cos^2 B - \\sin^2 A" }
+                ]
+            },
+            {
+                category: "Double Angle",
+                cards: [
+                    { front: "\\sin(2A) = ?", back: "2\\sin A \\cos A" },
+                    { front: "\\cos(2A) = ? \\text{ (3 forms)}", back: "1. \\cos^2 A - \\sin^2 A \\newline 2. 2\\cos^2 A - 1 \\newline 3. 1 - 2\\sin^2 A" },
+                    { front: "\\tan(2A) = ?", back: "\\frac{2\\tan A}{1 - \\tan^2 A}" }
+                ]
+            },
+            {
+                category: "Triple Angle",
+                cards: [
+                    { front: "\\sin(3A) = ?", back: "3\\sin A - 4\\sin^3 A" },
+                    { front: "\\cos(3A) = ?", back: "4\\cos^3 A - 3\\cos A" },
+                    { front: "\\tan(3A) = ?", back: "\\frac{3\\tan A - \\tan^3 A}{1 - 3\\tan^2 A}" }
+                ]
+            },
+            {
+                category: "Sum to Product",
+                cards: [
+                    { front: "\\sin C + \\sin D = ?", back: "2\\sin(\\frac{C+D}{2})\\cos(\\frac{C-D}{2})" },
+                    { front: "\\sin C - \\sin D = ?", back: "2\\cos(\\frac{C+D}{2})\\sin(\\frac{C-D}{2})" },
+                    { front: "\\cos C + \\cos D = ?", back: "2\\cos(\\frac{C+D}{2})\\cos(\\frac{C-D}{2})" },
+                    { front: "\\cos C - \\cos D = ?", back: "-2\\sin(\\frac{C+D}{2})\\sin(\\frac{C-D}{2})" }
+                ]
+            },
+            {
+                category: "Product to Sum",
+                cards: [
+                    { front: "2\\sin A \\cos B = ?", back: "\\sin(A+B) + \\sin(A-B)" },
+                    { front: "2\\cos A \\sin B = ?", back: "\\sin(A+B) - \\sin(A-B)" },
+                    { front: "2\\cos A \\cos B = ?", back: "\\cos(A+B) + \\cos(A-B)" },
+                    { front: "2\\sin A \\sin B = ?", back: "\\cos(A-B) - \\cos(A+B)" }
+                ]
+            }
+        ];
+        
+        // --- DOM Elements ---
+        const categoryView = document.getElementById('category-view');
+        const categoryGrid = document.getElementById('category-grid');
+        const quizView = document.getElementById('quiz-view');
+        const completeView = document.getElementById('complete-view');
+        const progressView = document.getElementById('progress-view');
+        
+        const card = document.getElementById('flashcard');
+        const cardInner = document.getElementById('card-inner');
+        const cardFront = document.getElementById('card-front');
+        const cardBack = document.getElementById('card-back');
+        
+        const flipBtn = document.getElementById('flip-btn');
+        const controlsView = document.getElementById('controls-view');
+        const assessmentView = document.getElementById('assessment-view');
+        const easyBtn = document.getElementById('easy-btn');
+        const hardBtn = document.getElementById('hard-btn');
+        
+        const progressText = document.getElementById('progress-text');
+        const backToCategoriesBtn = document.getElementById('back-to-categories-btn');
+        const challengeModeBtn = document.getElementById('challenge-mode-btn');
+        
+        const restartDeckBtn = document.getElementById('restart-deck-btn');
+        const goHomeBtn = document.getElementById('go-home-btn');
+        const completeMessage = document.getElementById('complete-message');
+
+        const headerStats = document.getElementById('header-stats');
+        const levelText = document.getElementById('level-text');
+        const xpText = document.getElementById('xp-text');
+        const xpBarInner = document.getElementById('xp-bar-inner');
+        const xpToastContainer = document.getElementById('xp-toast-container');
+        const streakCounter = document.getElementById('streak-counter');
+        const streakText = document.getElementById('streak-text');
+        
+        const viewProgressBtn = document.getElementById('view-progress-btn');
+        const backFromProgressBtn = document.getElementById('back-from-progress-btn');
+        const totalMasteryBar = document.getElementById('total-mastery-bar').querySelector('.progress-bar-inner');
+        const totalMasteryText = document.getElementById('total-mastery-text');
+        const masteryBarsContainer = document.getElementById('mastery-bars-container');
+
+        // --- Game Constants ---
+        const LEVEL_CURVE = 150;
+        const XP_KNOW = 10;
+        const XP_BONUS_UP = 15;
+        const XP_BONUS_MASTER = 50;
+        const STREAK_BONUS = 25;
+        const MASTERY_BOX_COUNT = 5;
+        const STORAGE_KEY = 'trigQuizzerProgress';
+
+        // --- App State ---
+        let currentDeck = [];
+        let currentCardIndex = 0;
+        let currentCategoryName = "";
+        let currentStreak = 0;
+        let gameData = {
+            xp: 0,
+            level: 1,
+            cardProgress: {} // { "cardFront": { box: 1 } }
+        };
+
+        // --- Functions ---
+        
+        /**
+         * Load game data from localStorage
+         */
+        function loadGameData() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (data) {
+                gameData = JSON.parse(data);
+            }
+            // Ensure cardProgress is an object
+            if (!gameData.cardProgress) {
+                gameData.cardProgress = {};
+            }
+        }
+        
+        /**
+         * Save game data to localStorage
+         */
+        function saveGameData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(gameData));
+        }
+
+        /**
+         * Renders a math string into a DOM element using KaTeX
+         */
+        function renderMath(element, mathString) {
+            try {
+                // Replace \newline with \\ for KaTeX
+                const formattedString = mathString.replace(/\\newline/g, '\\\\');
+                katex.render(formattedString, element, {
+                    throwOnError: false,
+                    displayMode: true
+                });
+            } catch (e) {
+                console.error(e);
+                element.textContent = mathString; // Fallback
+            }
+        }
+
+        /**
+         * Fisher-Yates Shuffle algorithm
+         */
+        function shuffleDeck(deck) {
+            let currentIndex = deck.length, randomIndex;
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [deck[currentIndex], deck[randomIndex]] = [deck[randomIndex], deck[currentIndex]];
+            }
+            return deck;
+        }
+        
+        /**
+         * Get card progress, initializing if new
+         */
+        function getCardProgress(cardFront) {
+            if (!gameData.cardProgress[cardFront]) {
+                gameData.cardProgress[cardFront] = { 
+                    box: 1,
+                    mistakes: 0,
+                    lastMistake: null,
+                    consecutiveCorrect: 0,
+                    hints: {}
+                };
+            }
+            return gameData.cardProgress[cardFront];
+        }
+        
+        /**
+         * Get all cards for a category
+         */
+        function getCardsForCategory(categoryName) {
+            if (categoryName === "Challenge Mode") {
+                return formulaData.flatMap(category => category.cards);
+            }
+            const category = formulaData.find(c => c.category === categoryName);
+            return category ? [...category.cards] : [];
+        }
+
+        /**
+         * Displays the current card
+         */
+        function showCard() {
+            if (currentCardIndex >= currentDeck.length) {
+                showCompleteView();
+                return;
+            }
+
+            // Reset card state
+            card.classList.remove('is-flipped');
+            controlsView.classList.remove('hidden');
+            assessmentView.classList.add('hidden');
+            
+            const cardData = currentDeck[currentCardIndex];
+            
+            // Render front and back
+            renderMath(cardFront, cardData.front);
+            renderMath(cardBack, cardData.back);
+            
+            // Update progress
+            progressText.textContent = `Card ${currentCardIndex + 1} of ${currentDeck.length}`;
+        }
+
+        /**
+         * Flips the card and shows assessment buttons
+         */
+        function flipCard() {
+            card.classList.add('is-flipped');
+            controlsView.classList.add('hidden');
+            assessmentView.classList.remove('hidden');
+        }
+
+        /**
+         * Handles user assessment (easy/hard)
+         */
+        function handleAssessment(knewIt) {
+            const cardID = currentDeck[currentCardIndex].front;
+            const progress = getCardProgress(cardID);
+            let xpGained = 0;
+            
+            if (knewIt) {
+                // --- KNEW IT ---
+                xpGained = XP_KNOW;
+                currentStreak++;
+                streakText.textContent = currentStreak;
+                streakCounter.classList.remove('hidden');
+                
+                // Add a bounce animation to streak
+                streakCounter.classList.remove('streak-bounce');
+                void streakCounter.offsetWidth; // Trigger reflow
+                streakCounter.classList.add('streak-bounce');
+
+                // Streak Bonus
+                if (currentStreak > 0 && currentStreak % 5 === 0) {
+                    xpGained += STREAK_BONUS;
+                    showXpToast(`+${STREAK_BONUS} Streak!`, 'special');
+                }
+
+                // Mastery Box Bonus
+                if (progress.box < MASTERY_BOX_COUNT) {
+                    progress.box++;
+                    let bonus = progress.box === MASTERY_BOX_COUNT ? XP_BONUS_MASTER : XP_BONUS_UP;
+                    xpGained += bonus;
+                    if (progress.box === MASTERY_BOX_COUNT) {
+                        showXpToast(`Mastered! +${bonus} XP`, 'mastery');
+                    } else {
+                        showXpToast(`Box ${progress.box}! +${bonus} XP`, 'special');
+                    }
+                }
+            } else {
+                // --- DIDN'T KNOW ---
+                xpGained = 1; // Pity XP
+                currentStreak = 0;
+                streakCounter.classList.add('hidden');
+                
+                // Track mistakes and provide helpful feedback
+                progress.mistakes++;
+                progress.lastMistake = Date.now();
+                progress.consecutiveCorrect = 0;
+                
+                // Generate hint based on the card type
+                let hint = generateHint(currentDeck[currentCardIndex]);
+                
+                // Store hint for future reference
+                if (hint && !progress.hints[progress.mistakes]) {
+                    progress.hints[progress.mistakes] = hint;
+                }
+                
+                // Reset mastery with smart decay
+                if (progress.box > 1) {
+                    // Drop by one box instead of resetting to 1 if you've been doing well
+                    if (progress.consecutiveCorrect >= 3) {
+                        progress.box--;
+                        showXpToast(`Moved to Box ${progress.box}`, 'bad', hint);
+                    } else {
+                        progress.box = 1;
+                        showXpToast(`Reset to Box 1`, 'bad', hint);
+                    }
+                } else {
+                    showXpToast(`Keep practicing!`, 'bad', hint);
+                }
+            }
+            
+            showXpToast(`+${xpGained} XP`);
+            addXP(xpGained);
+            saveGameData();
+            
+            currentCardIndex++;
+            showCard();
+        }
+        
+        /**
+         * Adds XP and handles leveling up
+         */
+        function addXP(amount) {
+            gameData.xp += amount;
+            let xpToNext = gameData.level * LEVEL_CURVE;
+            
+            if (gameData.xp >= xpToNext) {
+                gameData.level++;
+                gameData.xp -= xpToNext;
+                showXpToast(`LEVEL UP! ${gameData.level}`, 'mastery');
+            }
+            updateHeaderUI();
+        }
+        
+        /**
+         * Shows the animated XP toast with additional learning feedback
+         */
+        function showXpToast(text, type = 'normal', hint = '') {
+            const toast = document.createElement('div');
+            const content = document.createElement('div');
+            content.textContent = text;
+            
+            let colors = 'text-violet-300';
+            if (type === 'special') colors = 'text-yellow-300 font-bold';
+            if (type === 'mastery') colors = 'text-emerald-300 font-bold text-lg';
+            if (type === 'bad') colors = 'text-rose-400';
+            
+            toast.className = `xp-toast absolute right-0 ${colors}`;
+            content.className = 'mb-1';
+            toast.appendChild(content);
+            
+            if (hint) {
+                const hintElement = document.createElement('div');
+                hintElement.className = 'text-sm text-slate-300 mt-1';
+                hintElement.textContent = hint;
+                toast.appendChild(hintElement);
+                toast.style.width = '300px';
+                setTimeout(() => {
+                    toast.remove();
+                }, 3000);
+            } else {
+                setTimeout(() => {
+                    toast.remove();
+                }, 1000);
+            }
+            
+            xpToastContainer.appendChild(toast);
+        }
+        
+        /**
+         * Updates the header XP bar and level text
+         */
+        function updateHeaderUI() {
+            const xpToNext = gameData.level * LEVEL_CURVE;
+            const percent = (gameData.xp / xpToNext) * 100;
+            
+            levelText.textContent = `Level ${gameData.level}`;
+            xpText.textContent = `${gameData.xp} / ${xpToNext} XP`;
+            xpBarInner.style.width = `${percent}%`;
+        }
+        
+        /**
+         * Updates category buttons to show mastery
+         */
+        function updateCategoryUI() {
+            categoryGrid.querySelectorAll('button').forEach(btn => {
+                const categoryName = btn.dataset.category;
+                if (!categoryName) return;
+                
+                const allCards = getCardsForCategory(categoryName);
+                let masteredCount = 0;
+                allCards.forEach(card => {
+                    const progress = getCardProgress(card.front);
+                    if (progress.box === MASTERY_BOX_COUNT) {
+                        masteredCount++;
+                    }
+                });
+                
+                btn.querySelector('.mastery-text').textContent = `${masteredCount} / ${allCards.length} Mastered`;
+            });
+        }
+        
+        /**
+         * Switches view to the quiz
+         */
+        function startQuiz(categoryName) {
+            currentCategoryName = categoryName;
+            const allCards = getCardsForCategory(categoryName);
+            
+            // Filter out mastered cards, unless it's Challenge Mode
+            let cardsToReview = allCards;
+            if (categoryName !== "Challenge Mode") {
+                cardsToReview = allCards.filter(card => {
+                    const progress = getCardProgress(card.front);
+                    return progress.box < MASTERY_BOX_COUNT;
+                });
+            }
+            
+            currentDeck = shuffleDeck(cardsToReview);
+            // Sort by box number, lowest first, to drill weak cards
+            currentDeck.sort((a, b) => {
+                const progressA = getCardProgress(a.front);
+                const progressB = getCardProgress(b.front);
+                return progressA.box - progressB.box;
+            });
+            
+            currentCardIndex = 0;
+            currentStreak = 0;
+            streakCounter.classList.add('hidden');
+            
+            categoryView.classList.add('hidden');
+            progressView.classList.add('hidden');
+            completeView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            headerStats.classList.add('hidden');
+            
+            if (currentDeck.length === 0) {
+                showCompleteView(true);
+            } else {
+                showCard();
+            }
+        }
+        
+        /**
+         * Shows the session complete view
+         */
+        function showCompleteView(allMastered = false) {
+            quizView.classList.add('hidden');
+            completeView.classList.remove('hidden');
+            if (allMastered) {
+                completeMessage.textContent = `All cards in "${currentCategoryName}" are mastered! Great job!`;
+            } else {
+                completeMessage.textContent = `You've reviewed all non-mastered cards in "${currentCategoryName}".`;
+            }
+        }
+
+        /**
+         * Returns to the main category selector
+         */
+        function goHome() {
+            completeView.classList.add('hidden');
+            quizView.classList.add('hidden');
+            progressView.classList.add('hidden');
+            categoryView.classList.remove('hidden');
+            headerStats.classList.remove('hidden');
+            updateCategoryUI(); // Refresh mastery counts
+            updateHeaderUI(); // Refresh header
+        }
+        
+        /**
+         * Shows the "My Progress" view
+         */
+        function showProgressView() {
+            categoryView.classList.add('hidden');
+            progressView.classList.remove('hidden');
+            
+            const allCards = formulaData.flatMap(category => category.cards);
+            const totalCards = allCards.length;
+            let totalMastered = 0;
+            let boxCounts = [0, 0, 0, 0, 0]; // Index 0 = Box 1, etc.
+            
+            allCards.forEach(card => {
+                const progress = getCardProgress(card.front);
+                boxCounts[progress.box - 1]++;
+                if (progress.box === MASTERY_BOX_COUNT) {
+                    totalMastered++;
+                }
+            });
+            
+            // Update total mastery bar
+            const totalMasteryPercent = (totalMastered / totalCards) * 100;
+            totalMasteryBar.style.width = `${totalMasteryPercent}%`;
+            totalMasteryText.textContent = `${totalMastered} / ${totalCards}`;
+            
+            // Update box count bars
+            masteryBarsContainer.innerHTML = ''; // Clear old bars
+            const boxColors = ['bg-rose-500', 'bg-orange-500', 'bg-yellow-500', 'bg-lime-500', 'bg-emerald-500'];
+            
+            boxCounts.forEach((count, index) => {
+                const boxNum = index + 1;
+                const percent = (count / totalCards) * 100;
+                const barHtml = `
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="font-semibold text-slate-300">Box ${boxNum} ${boxNum === MASTERY_BOX_COUNT ? '(Mastered)' : ''}</span>
+                            <span class="text-slate-400">${count} cards</span>
+                        </div>
+                        <div class="w-full h-4 bg-slate-700 rounded-lg overflow-hidden">
+                            <div class="progress-bar-inner h-full rounded-lg ${boxColors[index]}" style="width: ${percent}%;"></div>
+                        </div>
+                    </div>
+                `;
+                masteryBarsContainer.innerHTML += barHtml;
+            });
+        }
+        
+        /**
+         * Populates the category grid on load
+         */
+        function initialize() {
+            loadGameData();
+            
+            formulaData.forEach(category => {
+                const btn = document.createElement('button');
+                btn.className = "w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-4 rounded-xl transition-all text-left";
+                btn.dataset.category = category.category; // Store category name
+                btn.innerHTML = `
+                    ${category.category} 
+                    <span class="mastery-text block text-sm text-slate-400">0 / ${category.cards.length} Mastered</span>
+                `;
+                btn.onclick = () => startQuiz(category.category);
+                categoryGrid.appendChild(btn);
+            });
+            
+            updateCategoryUI();
+            updateHeaderUI();
+            
+            // --- Event Listeners ---
+            flipBtn.onclick = flipCard;
+            easyBtn.onclick = () => handleAssessment(true);
+            hardBtn.onclick = () => handleAssessment(false);
+            
+            backToCategoriesBtn.onclick = goHome;
+            goHomeBtn.onclick = goHome;
+            backFromProgressBtn.onclick = goHome;
+            
+            challengeModeBtn.onclick = () => startQuiz("Challenge Mode");
+            viewProgressBtn.onclick = showProgressView;
+            
+            restartDeckBtn.onclick = () => {
+                startQuiz(currentCategoryName);
+            };
+        }
+
+        /**
+         * Generates contextual hints based on card type and content
+         */
+        function generateHint(card) {
+            const front = card.front.toLowerCase();
+            const back = card.back.toLowerCase();
+            
+            // Identify card type and provide relevant hints
+            if (front.includes('\\sin') || front.includes('\\cos') || front.includes('\\tan')) {
+                if (front.includes('^{-1}')) {
+                    return "Remember: Inverse trig functions are about finding angles, not ratios.";
+                }
+                if (front.includes('+') || front.includes('-')) {
+                    return "Think about how these functions work with components separately first.";
+                }
+                if (front.includes('2') && back.includes('\\sin') && back.includes('\\cos')) {
+                    return "Double angle formulas often involve products of the same function.";
+                }
+            }
+            
+            if (front.includes('domain') || front.includes('range')) {
+                return "Consider where the function is undefined and what values it can output.";
+            }
+            
+            if (front.includes('°')) {
+                return "Remember common angle values by thinking about right triangles.";
+            }
+            
+            return "Break down the formula into smaller parts you understand.";
+        }
+
+        /**
+         * Gets cards that need extra practice based on mistake history
+         */
+        function getPracticeCards() {
+            const allCards = formulaData.flatMap(category => category.cards);
+            const now = Date.now();
+            const dayInMs = 24 * 60 * 60 * 1000;
+            
+            return allCards.filter(card => {
+                const progress = getCardProgress(card.front);
+                
+                // Include cards with recent mistakes
+                if (progress.lastMistake && (now - progress.lastMistake) < dayInMs) {
+                    return true;
+                }
+                
+                // Include frequently missed cards
+                if (progress.mistakes > 2) {
+                    return true;
+                }
+                
+                // Include cards with low consecutive correct answers
+                if (progress.box < 3 && progress.consecutiveCorrect < 2) {
+                    return true;
+                }
+                
+                return false;
+            });
+        }
+
+        /**
+         * Starts a focused practice session
+         */
+        function startPracticeMode() {
+            const practiceCards = getPracticeCards();
+            
+            if (practiceCards.length === 0) {
+                alert("No cards need extra practice right now. Great job!");
+                return;
+            }
+            
+            currentDeck = shuffleDeck(practiceCards);
+            currentCategoryName = "Practice Mode";
+            currentCardIndex = 0;
+            currentStreak = 0;
+            
+            categoryView.classList.add('hidden');
+            progressView.classList.add('hidden');
+            completeView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            headerStats.classList.add('hidden');
+            
+            showCard();
+        }
+
+        // Add Practice Mode button to UI
+        const practiceBtn = document.createElement('button');
+        practiceBtn.className = "w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-3 px-4 rounded-xl transition-all mt-4";
+        practiceBtn.textContent = "Practice Mode (Focus on Weak Cards)";
+        practiceBtn.onclick = startPracticeMode;
+        document.getElementById('category-view').insertBefore(practiceBtn, viewProgressBtn);
+
+        // --- Start the app ---
+        document.addEventListener("DOMContentLoaded", () => {
+             // A small delay to ensure KaTeX is loaded
+             setTimeout(initialize, 50);
+        });
+
+    </script>
+</body>
+</html>
